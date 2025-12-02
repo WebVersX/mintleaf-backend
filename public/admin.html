@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mint Leaf - Admin Panel</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen">
+  <div class="max-w-5xl mx-auto py-10">
+    <h1 class="text-3xl font-bold text-slate-800 mb-6">Admin Panel - Table Bookings</h1>
+    <p class="mb-4 text-slate-600">View and manage all table booking requests.</p>
+
+    <div class="bg-white rounded-xl shadow-md p-4 overflow-x-auto">
+      <table class="min-w-full text-sm" id="booking-table">
+        <thead>
+          <tr class="border-b">
+            <th class="text-left py-2 px-2">ID</th>
+            <th class="text-left py-2 px-2">Name</th>
+            <th class="text-left py-2 px-2">Phone</th>
+            <th class="text-left py-2 px-2">Date</th>
+            <th class="text-left py-2 px-2">Time</th>
+            <th class="text-left py-2 px-2">Guests</th>
+            <th class="text-left py-2 px-2">Status</th>
+            <th class="text-left py-2 px-2">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="booking-body">
+          <tr>
+            <td colspan="8" class="py-4 text-center text-slate-500">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+async function fetchBookings() {
+  const tbody = document.getElementById("booking-body");
+  tbody.innerHTML = "<tr><td colspan='8' class='py-4 text-center text-slate-500'>Loading...</td></tr>";
+
+  try {
+    const res = await fetch("https://mintleaf-backend.onrender.com/api/bookings");
+    const data = await res.json();
+
+    if (!Array.isArray(data) || data.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='8' class='py-4 text-center text-slate-500'>No bookings yet.</td></tr>";
+      return;
+    }
+
+    tbody.innerHTML = "";
+    data.forEach(b => {
+      const tr = document.createElement("tr");
+      tr.className = "border-b last:border-none";
+
+      tr.innerHTML = `
+        <td class="py-2 px-2">${b.id}</td>
+        <td class="py-2 px-2">${b.name}</td>
+        <td class="py-2 px-2">${b.phone}</td>
+        <td class="py-2 px-2">${b.date}</td>
+        <td class="py-2 px-2">${b.time}</td>
+        <td class="py-2 px-2">${b.guests}</td>
+        <td class="py-2 px-2">
+          <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+            b.status === "confirmed" ? "bg-green-100 text-green-700" :
+            b.status === "rejected" ? "bg-red-100 text-red-700" :
+            "bg-yellow-100 text-yellow-700"
+          }">
+            ${b.status}
+          </span>
+        </td>
+        <td class="py-2 px-2 space-x-2">
+          <button onclick="updateStatus(${b.id}, 'confirmed')" class="px-3 py-1 text-xs rounded-lg bg-green-600 text-white hover:bg-green-700">Confirm</button>
+          <button onclick="updateStatus(${b.id}, 'rejected')" class="px-3 py-1 text-xs rounded-lg bg-red-600 text-white hover:bg-red-700">Reject</button>
+        </td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    console.error(e);
+    tbody.innerHTML = "<tr><td colspan='8' class='py-4 text-center text-red-500'>Failed to load bookings.</td></tr>";
+  }
+}
+
+async function updateStatus(id, status) {
+  if (!confirm("Change status to " + status + "?")) return;
+  try {
+    const res = await fetch("/api/bookings/" + id, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      alert(data.message || "Failed to update status");
+      return;
+    }
+    fetchBookings();
+  } catch (e) {
+    console.error(e);
+    alert("Server error");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", fetchBookings);
+</script>
+</body>
+</html>
